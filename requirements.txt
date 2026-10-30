@@ -18,6 +18,6 @@ google-auth
 google-auth-oauthlib
 google-auth-httplib2
 
-# Optional — only for tools/capture_web.py (auto-capturing public web pages to clone as beats):
-#   pip install playwright && playwright install chromium
-# playwright
+# tools/capture_web.py (captures public web pages for screencast beats). After installing,
+# fetch its browser once:  venv/Scripts/python -m playwright install chromium
+playwright

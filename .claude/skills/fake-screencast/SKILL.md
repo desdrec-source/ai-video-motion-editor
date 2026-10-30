@@ -17,7 +17,9 @@ This is a beat-building technique inside **`make-tsx`** (step 2). Use `make-tsx`
 
 ## Step 1 — get the screenshots (ask the user)
 
-Tell the user the exact shot list you need (one screenshot per **page or state** the cursor lands on), then wait for them. Requirements:
+**Public pages (a YouTube search, a product homepage, a GitHub repo): capture them yourself** with `tools/capture_web.py` (Playwright drives a real Chromium; spec format in its docstring), no screenshots needed from the user. If it reports a missing browser, run `venv/Scripts/python -m playwright install chromium` once. Only logged-in or private pages need the user.
+
+For everything else, tell the user the exact shot list you need (one screenshot per **page or state** the cursor lands on), then wait for them. Requirements:
 
 - **Logged in / real data**, the actual product UI, captured at a consistent window size (ideally ~1920-wide).
 - **One per state**, including intermediate states: an unfiltered list AND its filtered result count as two screenshots (the crossfade sells the "search applied").
