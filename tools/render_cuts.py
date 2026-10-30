@@ -75,14 +75,32 @@ def video_duration(path: Path) -> float:
         return float(st["duration"])
 
 
+_channels: dict[Path, int] = {}
+
+
+def audio_channels(src: Path) -> int:
+    if src not in _channels:
+        r = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "a:0",
+                            "-show_entries", "stream=channels", "-of", "csv=p=0", str(src)],
+                           capture_output=True, text=True, check=True)
+        _channels[src] = int(r.stdout.strip() or 1)
+    return _channels[src]
+
+
 def render_audio_segment(src: Path, start: float, dur: float, out: Path) -> None:
-    """Raw audio cut to a SAMPLE-EXACT length matching the segment's video."""
+    """Raw audio cut to a SAMPLE-EXACT length matching the segment's video.
+
+    Always stereo. A mono source is DUPLICATED to both channels: ffmpeg's default
+    mono->stereo upmix (-ac 2 / aformat) puts each channel 3 dB down, and the SFX mixer
+    sums stereo clips against that, so the voice came out 3 dB under its own level
+    (measured on a mono master: whole mix -2.7 LU vs the voice alone)."""
     n = round(dur * SR)
-    fades = (f"atrim=end_sample={n},"
+    to_stereo = "pan=stereo|c0=c0|c1=c0," if audio_channels(src) == 1 else ""
+    fades = (f"{to_stereo}atrim=end_sample={n},"
              f"afade=t=in:d=0.01,afade=t=out:st={max(n / SR - 0.01, 0):.4f}:d=0.01")
     cmd = ["ffmpeg", "-y", "-loglevel", "error",
            "-ss", f"{start:.3f}", "-t", f"{dur + 0.2:.3f}", "-i", str(src),
-           "-vn", "-ar", str(SR), "-ac", "1", "-af", fades,
+           "-vn", "-ar", str(SR), "-ac", "2", "-af", fades,
            "-c:a", "pcm_s16le", str(out)]
     subprocess.run(cmd, check=True)
 
@@ -113,6 +131,19 @@ def main() -> None:
     seg_dir = project / "work" / "render" / f"{args.style}-{args.mode}"
     seg_dir.mkdir(parents=True, exist_ok=True)
     outs = [seg_dir / f"seg_{i:03d}.mp4" for i in range(len(jobs))]
+
+    # Resume is keyed by segment INDEX, so it is only safe while the plan is unchanged.
+    # After a cuts.json edit, seg_005.mp4 holds the OLD span 5 and would be stitched in
+    # silently. Record the plan beside the segments and drop them all when it differs.
+    plan_file = seg_dir / "plan.json"
+    plan = [[str(src), round(s, 3), round(e, 3)] for src, (s, e) in jobs]
+    old = [p for p in seg_dir.iterdir() if p.name.startswith("seg_")]
+    # no plan.json beside existing segments = rendered before this check existed: unknowable
+    if old and (not plan_file.exists() or json.loads(plan_file.read_text(encoding="utf-8")) != plan):
+        print(f"  cut plan changed since the last render: discarding {len(old)} old segment files")
+        for p in old:
+            p.unlink()
+    plan_file.write_text(json.dumps(plan), encoding="utf-8")
 
     todo = [(src, seg, out) for (src, seg), out in zip(jobs, outs) if not is_finalized(out)]
     if len(todo) < len(jobs):

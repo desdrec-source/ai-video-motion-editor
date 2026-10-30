@@ -150,15 +150,20 @@ def main():
         parts.append("".join(labels) + f"amix=inputs={len(labels)}:normalize=0:"
                      f"dropout_transition=0[sfxraw]")
 
+    # A mono voice must be DUPLICATED, not upmixed: aformat's mono->stereo puts each
+    # channel 3 dB down, which sinks the voice 3 dB under every SFX cue.
+    vch = run(["ffprobe", "-v", "error", "-select_streams", "a:0", "-show_entries",
+               "stream=channels", "-of", "csv=p=0", preview]).strip()
+    voice = "[0:a]pan=stereo|c0=c0|c1=c0," if vch == "1" else "[0:a]"
     if duck:
-        parts.append("[0:a]aformat=sample_rates=48000:channel_layouts=stereo,asplit=2[v1][v2]")
+        parts.append(f"{voice}aformat=sample_rates=48000:channel_layouts=stereo,asplit=2[v1][v2]")
         # GENTLE duck: only tuck the SFX a few dB under the loudest speech, never bury them.
         # (The per-cue gain_db already sets them under the voice; this just cleans overlaps.)
         parts.append("[sfxraw][v1]sidechaincompress=threshold=0.15:ratio=2:attack=5:"
                      "release=200:makeup=2[sfxduck]")
         parts.append("[v2][sfxduck]amix=inputs=2:normalize=0[mixraw]")
     else:
-        parts.append("[0:a]aformat=sample_rates=48000:channel_layouts=stereo[v2]")
+        parts.append(f"{voice}aformat=sample_rates=48000:channel_layouts=stereo[v2]")
         parts.append("[v2][sfxraw]amix=inputs=2:normalize=0[mixraw]")
     # gentle safety limiter so summed peaks never clip
     parts.append("[mixraw]alimiter=level_in=1:level_out=1:limit=0.97[mix]")

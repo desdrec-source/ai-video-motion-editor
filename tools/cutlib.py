@@ -88,15 +88,36 @@ class AudioProbe:
 
 
 def active_keeps(clip: dict) -> list[dict]:
-    """Keeps that survive AUTO-APPLIED fluff removal. Keeps are never deleted —
-    a fluff span with status 'auto_applied' just hides the keeps it covers, so
-    undo is a one-field flip back to 'suggested'."""
+    """Keeps that survive AUTO-APPLIED fluff removal, with every cut span carved out.
+    Keeps are never deleted — a fluff span with status 'auto_applied' just hides the
+    keeps it covers, so undo is a one-field flip back to 'suggested'.
+
+    Carving matters because split_atoms takes atoms from the WORDS inside a keep: a
+    cut sitting inside a keep (an 'uh' between two kept words, with no pause around
+    it) would otherwise be glued into the atom and rendered — and verify_cut, which
+    builds its intended tokens from these keeps too, would call it intended."""
     applied = [(f["s"], f["e"]) for f in clip.get("fluff_suggestions", [])
                if f.get("status") == "auto_applied"]
-    if not applied:
-        return clip["keeps"]
     covered = lambda k: any(k["s"] >= s - 0.05 and k["e"] <= e + 0.05 for s, e in applied)
-    return [k for k in clip["keeps"] if not covered(k)]
+    keeps = [k for k in clip["keeps"] if not covered(k)]
+    return carve_cuts(keeps, clip.get("cuts", []))
+
+
+def carve_cuts(keeps: list[dict], cuts: list[dict]) -> list[dict]:
+    """Split each keep around the cut spans that overlap it."""
+    spans = sorted((c["s"], c["e"]) for c in cuts)
+    out = []
+    for k in keeps:
+        s = k["s"]
+        for cs, ce in spans:
+            if ce <= s or cs >= k["e"]:
+                continue
+            if cs > s:
+                out.append({**k, "s": s, "e": cs})
+            s = max(s, ce)
+        if s < k["e"]:
+            out.append({**k, "s": s, "e": k["e"]})
+    return out
 
 
 def split_atoms(keeps: list[dict], words: list[dict], internal_gap: float) -> list[tuple[float, float]]:

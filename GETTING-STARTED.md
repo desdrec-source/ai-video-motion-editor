@@ -425,6 +425,15 @@ recognise their certificate.
    For **Avast**, use `"C:\ProgramData\Avast Software\Avast\wscert.pem"` instead. After that, pip
    is up to date and works normally.
 
+3. **If a tool fails later** with `CERTIFICATE_VERIFY_FAILED` (for example transcription, when it
+   uploads your audio), your toolkit was installed before this fix. Run the Step 4 install again:
+   it now adds a small package that makes the tools trust your antivirus the same way your browser
+   does.
+
+   ```powershell
+   venv\Scripts\python -m pip install -r requirements.txt
+   ```
+
 **Don't** turn off your antivirus or use "trusted host" tricks to get around this.
 
 ---
