@@ -91,10 +91,11 @@ fresh terminal.
 **Check it worked.** Paste this into the new terminal:
 
 ```powershell
-git --version; python --version; node --version; ffmpeg -version
+git --version; python --version; node --version; ffmpeg -version | Select-Object -First 1
 ```
 
-You should see four version numbers (the last one prints a lot of text; that's normal). If one says
+You should see four short lines, each with a version number. Your numbers may be different from
+anyone else's; that's fine, as long as you see four lines. If one says
 *"not recognized"*, see [Troubleshooting](#troubleshooting).
 
 ---
