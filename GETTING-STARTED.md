@@ -35,7 +35,8 @@ You'll need:
 - **A Windows 10 or 11 PC.** (Mac users: see the [FAQ](#faq).)
 - **A Claude plan that includes Claude Code.** There's no free tier; **Claude Pro** is the cheapest
   plan (check the current price on claude.com). Anthropic API credits also work.
-- **A free AssemblyAI account** for transcription. Step 6 shows where to get the key.
+- **A free [AssemblyAI](https://tinyurl.com/TryAssemblyAI) account** (affiliate link) for
+  transcription. Step 6 shows where to get the key.
 - **About 2 GB of free disk space.**
 
 Everything else is optional; see [What it costs](#what-it-costs).
@@ -236,7 +237,7 @@ Your keys live in a file called `.env` in the toolkit folder. It **never** gets 
 
 | Key | What it does | Where to get it | Need it to start? |
 |---|---|---|---|
-| `ASSEMBLYAI_API_KEY` | Transcribes your video so Claude can read it and cut it | [assemblyai.com](https://www.assemblyai.com) → your dashboard → **API key** | **Yes.** The free tier is enough to try it |
+| `ASSEMBLYAI_API_KEY` | Transcribes your video so Claude can read it and cut it | Sign up at [AssemblyAI](https://tinyurl.com/TryAssemblyAI)\* → your dashboard → **API key** | **Yes.** The free tier is enough to try it |
 | `ELEVENLABS_API_KEY` | Cleans your voice, makes sound effects and music | [ElevenLabs](https://tinyurl.com/Try-Eleven-Labs)\* | **No.** Paid. The voice clean-up has a free option (below) |
 | `ELEVENLABS_VOICE_ID` | Your own AI voice, for AI voiceovers | Your ElevenLabs voice library | **No.** Only for AI voiceovers |
 | `GEMINI_API_KEY` | Draws your thumbnails | [ai.google.dev](https://ai.google.dev) | **No.** Only when you make thumbnails |
@@ -333,7 +334,7 @@ check each provider before planning a big batch.
 | Service | For | Cost |
 |---|---|---|
 | **Claude Code** | Running everything | Paid. No free tier; Claude Pro is the cheapest plan |
-| **AssemblyAI** | The cut (step 1) | Free tier is enough to try it |
+| **[AssemblyAI](https://tinyurl.com/TryAssemblyAI)**\* | The cut (step 1) | Free tier is enough to try it |
 | **[ElevenLabs](https://tinyurl.com/Try-Eleven-Labs)**\* | Voice clean-up, sound effects, music | Paid. The voice clean-up has a free local option |
 | **Gemini** | Thumbnails | Paid, and only if you make thumbnails |
 | **YouTube** | Upload | Free, browser sign-in |

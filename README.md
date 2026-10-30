@@ -78,7 +78,7 @@ are readable, and renders a proof card so you see your brand before you build a 
 | Service | For | Notes |
 |---|---|---|
 | **Claude Code** | driving the whole thing | paid plan or API credits |
-| **AssemblyAI** | transcription (step 1) | free tier is enough to try it |
+| **[AssemblyAI](https://tinyurl.com/TryAssemblyAI)**\* | transcription (step 1) | free tier is enough to try it |
 | **[ElevenLabs](https://tinyurl.com/Try-Eleven-Labs)**\* | voice isolation + SFX + music (steps 3–4) | paid. `/clean-audio` also has a **local RNNoise** method that needs no key |
 | **Gemini** | thumbnails (step 5) | paid, and only if you render thumbnails |
 | **YouTube** | upload (step 6) | free, sign-in via OAuth — see `tools/yt_upload_SETUP.md` |
