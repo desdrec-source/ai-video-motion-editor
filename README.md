@@ -47,7 +47,8 @@ claude                                                   # open in Claude Code, 
 > **suggest sfx for video-1** · **package this video**
 
 **Screen recordings welcome:** most screen recorders save a *variable* frame rate, which makes graphics
-drift away from your voice. `/clean-cut` fixes this automatically before cutting (`tools/prep_recording.py`).
+drift away from your voice, and webcam mics record much quieter than a clip-on. `/clean-cut` fixes both
+automatically before cutting (`tools/prep_recording.py`).
 
 **Any PC:** the video tools use an NVIDIA graphics card when there is one, and your CPU otherwise.
 

@@ -394,6 +394,7 @@ See [Troubleshooting](#troubleshooting) just below.
 | **`ModuleNotFoundError`** (`requests`, `PIL`, `google`…) | A tool ran with the wrong Python | Run tools as `venv\Scripts\python tools\...`, from the toolkit folder |
 | **`… not found in .env`** | A key is missing | Open `.env` (Step 6) and add it |
 | Graphics **drift out of sync** with your voice | Variable frame rate recording | Ask Claude Code: "run prep_recording on videos/video-1", then redo the cut |
+| Music or sound effects **drown out your voice** | A quiet webcam or laptop mic | Same fix: "run prep_recording on videos/video-1" (it also sets your voice level), then redo the cut |
 | **`npm warn allow-scripts`** about **esbuild** | A safety warning from npm | Harmless, ignore it |
 | Anything else | | Copy the error, paste it into Claude Code, and ask "what does this mean and how do I fix it?" |
 

@@ -198,7 +198,8 @@ Plus two brand-specific extras: `page-flip` (storybook) and `chime-reward` (the 
   reveal; a whoosh on the cutaway; the impact on the drop word. Time off the shot's animation frames
   AND `edited-transcript.json` word times.
 - **Levels.** Library clips are loudness-normalized to **~−20 LUFS** with a −1.5 dBFS peak ceiling, so a
-  plan's per-cue `gain_db` is perceptually meaningful. The voice is ~−17 LUFS, so gain sets how far
+  plan's per-cue `gain_db` is perceptually meaningful. The voice is ~−14 LUFS as played (`tools/prep_recording.py` sets it, so a quiet webcam
+  mic gets the same treatment as a clip-on), so gain sets how far
   under it a cue sits: **payoffs ~−5/−6 · transitions ~−6/−8 · bed/texture ~−9/−11.** The SFX bus is
   **lightly ducked under the voice** (gentle sidechain, ~4 dB) in the audition mix; final
   polish/ducking/loudness is the final-mix step's job.
