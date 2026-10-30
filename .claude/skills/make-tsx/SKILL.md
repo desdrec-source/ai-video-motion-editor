@@ -45,7 +45,7 @@ This is the project orchestration. For the low-level rules of writing a single c
 - **`type: "cutaway"`** — the shot's `.mp4` REPLACES the master video for `[master_in_s, master_out_s]`. Master **audio always continues** underneath.
 - **`type: "overlay"`** — a transparent shot (ProRes 4444 `.mov`, `transparent: true` in its compositionConfig) is composited OVER the master for that span. For small persistent CTAs/badges in the top/bottom band.
 - `bake.py` splits `[0, end]` at every shot boundary, renders each segment (cutaway from the shot, overlay = master+alpha, else master pass-through), concats, and muxes master audio 0..end. Frame-accurate; a shot's file must exist in `remotion/out/` first.
-- Design shots at 1920×1080; render-all `--scale=2` → 4K for final. Preview bakes 1080p30; final delivery is 4K60.
+- Design shots at 1920×1080. Final delivery follows `brand.md` §7 (1080p30 for this channel): render at `--scale=1`. Use `--scale=2` only when the master itself is 4K.
 
 ## Principles (the house style — apply them)
 

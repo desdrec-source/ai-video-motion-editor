@@ -47,7 +47,7 @@ Rule of thumb: **stationary noise → try local first; dynamic broadband (water/
    run each candidate method, level-match them to each other, and compare — by ear (the real test) AND by
    spectrogram (pauses going dark = noise removed) and residual level. Let the user pick.
 4. **Clean the full master:** `python tools/clean_voice.py videos/video-N/reference/<cut>.mp4 --method <chosen> [--model sh]`
-   → `<cut>-clean.mp4` (or `-clean-<model>.mp4`). Video stream COPIED (fast, non-destructive, keeps 4K60).
+   → `<cut>-clean.mp4` (or `-clean-<model>.mp4`). Video stream COPIED (fast, non-destructive, keeps the original picture quality).
 5. **Levels are preserved by RMS-match, not LUFS** (the tool does this). Never match integrated LUFS —
    it is gated and inflated by the removed noise, and over-boosts the voice into clipping. The clean file
    will read a lower integrated LUFS than the noisy original; that is expected (the noise was padding the

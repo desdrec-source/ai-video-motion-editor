@@ -4,7 +4,8 @@ Usage:
   python tools/render_cuts.py video-1 --style tight --mode preview
   python tools/render_cuts.py video-1 --style tight --mode final
 
-preview: 720p h264_nvenc, fast.  final: 4K60 10-bit hevc_nvenc, high quality.
+preview: 720p H.264, fast.  final: source resolution, 8-bit H.264, high quality.
+Both use the NVIDIA encoder when it works and the CPU otherwise (see encoders.py).
 
 Segments come from cutlib.plan_clip: keeps are split into speech runs at pauses
 >= internal_gap, each run's tail is snapped to the audio floor (words finish
@@ -28,22 +29,17 @@ from fractions import Fraction
 from pathlib import Path
 
 from cutlib import AudioProbe, active_keeps, load_words, plan_clip
+from encoders import describe, hwaccel_args, video_args
 
 SR = 48000  # audio build sample rate
 
-ENC = {
-    "preview": ["-vf", "scale=1280:-2,format=yuv420p", "-c:v", "h264_nvenc", "-preset", "p4",
-                "-rc", "vbr", "-cq", "30", "-b:v", "0"],
-    "final": ["-c:v", "hevc_nvenc", "-preset", "p5", "-profile:v", "main10",
-              "-pix_fmt", "p010le", "-rc", "vbr", "-cq", "19", "-b:v", "0"],
-}
 AUDIO_BITRATE = {"preview": "160k", "final": "256k"}
 
 
 def render_segment(src: Path, seg: tuple[float, float], out: Path, enc: list[str]) -> None:
     start, end = seg
     dur = end - start
-    cmd = ["ffmpeg", "-y", "-loglevel", "error", "-hwaccel", "cuda",
+    cmd = ["ffmpeg", "-y", "-loglevel", "error", *hwaccel_args(),
            "-ss", f"{start:.3f}", "-t", f"{dur:.3f}", "-i", str(src),
            "-map", "0:0", "-an", *enc, str(out)]
     subprocess.run(cmd, check=True)
@@ -51,7 +47,7 @@ def render_segment(src: Path, seg: tuple[float, float], out: Path, enc: list[str
 
 def is_finalized(path: Path) -> bool:
     """True if the mp4 exists AND has a readable moov atom (i.e. muxing completed).
-    A 4K60 10-bit final is ~1h of encoding; without this a failure in any later stage
+    A long final can take an hour or more to encode; without this a failure in any later stage
     (TS/concat/mux) means redoing all of it. Also guards the reverse case seen on
     2026-08-06: a segment probed before its moov was flushed read as corrupt and the TS
     stage died with AVERROR_INVALIDDATA even though every encode had exited 0."""
@@ -126,7 +122,7 @@ def main() -> None:
             jobs.append((project / clip["file"], seg))
 
     total = sum(e - s for _, (s, e) in jobs)
-    print(f"{args.style}/{args.mode}: {len(jobs)} segments, output ~ {total / 60:.1f} min")
+    print(f"{args.style}/{args.mode}: {len(jobs)} segments, output ~ {total / 60:.1f} min, {describe()}")
 
     seg_dir = project / "work" / "render" / f"{args.style}-{args.mode}"
     seg_dir.mkdir(parents=True, exist_ok=True)
@@ -149,7 +145,7 @@ def main() -> None:
     if len(todo) < len(jobs):
         print(f"  resuming: {len(jobs) - len(todo)} segments already encoded, {len(todo)} to go")
     with ThreadPoolExecutor(max_workers=3) as pool:
-        futs = [pool.submit(render_segment, src, seg, out, ENC[args.mode]) for src, seg, out in todo]
+        futs = [pool.submit(render_segment, src, seg, out, video_args(args.mode)) for src, seg, out in todo]
         for i, f in enumerate(futs):
             f.result()
             if (i + 1) % 20 == 0:
@@ -165,7 +161,7 @@ def main() -> None:
     # into the video (~10-16ms per cut => ~0.8s over ~100 cuts on 59.94fps footage),
     # while the sample-exact audio has none -> progressive lip-sync drift. TS carries no
     # per-file trailing gap, so the concat stays frame-exact (bounded, non-accumulating).
-    bsf = "hevc_mp4toannexb" if args.mode == "final" else "h264_mp4toannexb"
+    bsf = "h264_mp4toannexb"
     ts_files = []
     for o in outs:
         ts = o.with_suffix(".ts")
@@ -193,14 +189,9 @@ def main() -> None:
     subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-f", "concat", "-safe", "0",
                     "-i", str(alist), "-c", "copy", str(audio_concat)], check=True)
 
-    # NB (2026-07-11): the HEVC final still stamps its frame PTS ~0.1% fast on 59.94fps
-    # footage (r_frame_rate stays 60000/1001 but the PTS span runs ~0.3s short over ~4min),
-    # an hevc_nvenc/TS quirk that a stream COPY can't correct. It's separate from (and far
-    # smaller than) the ~0.8s concat accumulation fixed above. The h264 preview stamps
-    # correctly. Correct the final at delivery by re-timing on re-encode: prepend
-    # `-r 60000/1001` (the source fps) BEFORE `-i` when transcoding — that re-stamps every
-    # frame to true CFR with no frame loss. Verify any delivered file with:
-    # ffprobe stream=duration on v:0 vs a:0 — they must be equal.
+    # The final is H.264 like the preview: the old 10-bit HEVC final stamped its PTS ~0.1%
+    # fast through the TS concat and needed a re-timing transcode; H.264 stamps correctly.
+    # Still verify any delivered file: ffprobe stream=duration on v:0 vs a:0 must be equal.
 
     # single mux: copied video + one continuous AAC encode
     out_name = f"{'preview' if args.mode == 'preview' else 'master'}-{args.style}.mp4"

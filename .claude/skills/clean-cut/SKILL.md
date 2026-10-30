@@ -1,20 +1,21 @@
 ---
 name: clean-cut
-description: Step 1 of the AI Video Editor pipeline — turn raw talking-head footage into a clean master cut. Use when the user wants to "clean cut", "cut the raw footage", "remove filler / dead air / bad takes", "tighten the pacing", produce cuts.json, run the cut editor, or render a cleaned preview/master for a video-N project in this repo. Covers audio extraction, AssemblyAI transcription, authoring cuts.json (keeps/cuts/fluff categorized), the cut policy (content-aggressive, pause-natural ~0.5s), QA + review docs, the local cut-editor UI, tight/natural previews, the final 4K60 render, and producing edited-transcript.json as the handoff to /make-tsx. Not for building TSX overlays (that is /make-tsx) or the raw TSX authoring rules (that is vidtsx-2d-generator).
+description: Step 1 of the AI Video Editor pipeline — turn raw talking-head footage into a clean master cut. Use when the user wants to "clean cut", "cut the raw footage", "remove filler / dead air / bad takes", "tighten the pacing", produce cuts.json, run the cut editor, or render a cleaned preview/master for a video-N project in this repo. Covers frame-rate prep for screen recordings, audio extraction, AssemblyAI transcription, authoring cuts.json (keeps/cuts/fluff categorized), the cut policy (content-aggressive, pause-natural ~0.5s), QA + review docs, the local cut-editor UI, tight/natural previews, the final 1080p H.264 render, and producing edited-transcript.json as the handoff to /make-tsx. Not for building TSX overlays (that is /make-tsx) or the raw TSX authoring rules (that is vidtsx-2d-generator).
 ---
 
 # clean-cut — the step-1 cut pipeline
 
-Turn a project's raw clips (`videos/video-N/DJI_*.MP4`) into a **clean master** + **`edited-transcript.json`** (the word-level timing spine every later step anchors to). The single source of truth is **`videos/video-N/work/analysis/cuts.json`** — shared by Claude and the editor UI. Every tool lives in `tools/` and takes the project dir as its first arg.
+Turn a project's raw recordings (`videos/video-N/*.mp4` — screen recordings or camera files) into a **clean master** + **`edited-transcript.json`** (the word-level timing spine every later step anchors to). The single source of truth is **`videos/video-N/work/analysis/cuts.json`** — shared by Claude and the editor UI. Every tool lives in `tools/` and takes the project dir as its first arg.
 
 **You (Claude) author the cuts by reading the transcript.** No separate LLM call. The tools handle audio, encoding, QA, and the editor; the judgment — what is a retake, a false start, filler, or fluff — is yours.
 
 ## Pipeline (run in order)
 
-Let `P` = the project (e.g. `video-1`). Clip **id** = a short handle (`0233`); every artifact for a clip is named by that id (`0233.wav`, `0233.json`). The raw MP4 path is stored per-clip in cuts.json as `file`.
+Let `P` = the project (e.g. `videos/video-1`). Clip **id** = a short handle (`rec1`, or `0233` for a camera file); every artifact for a clip is named by that id (`rec1.wav`, `rec1.json`). The raw MP4 path is stored per-clip in cuts.json as `file`.
 
+0. **Make the frame rate constant (ALWAYS, first):** `python tools/prep_recording.py P`. Screen recorders (Panda, OBS, Loom…) write VARIABLE frame rate, which makes graphics drift off the voice later. The tool checks every video in `P`, converts any VFR file to a steady 30 fps as `<name>-30fps.mp4`, moves the original to `P/original/` (never deleted), and leaves constant-frame-rate files alone. Use the `-30fps` file as the clip's `file` from here on, and tell the user in one line what it found. `--check` reports without changing anything; `--fps 25` targets another rate.
 1. **Extract 16 kHz mono WAV per clip** → `P/work/audio/<id>.wav` (used for transcription + the RMS noise-floor / snap-to-audio tails). Not scripted — run ffmpeg per clip:
-   `ffmpeg -i videos/video-1/DJI_...0233_D.MP4 -vn -ac 1 -ar 16000 videos/video-1/work/audio/0233.wav`
+   `ffmpeg -i videos/video-1/recording-30fps.mp4 -vn -ac 1 -ar 16000 videos/video-1/work/audio/rec1.wav`
 2. **Draft this video's keyterms → `P/work/keyterms.txt`** (do this before transcribing). Keyterms bias the recognizer toward this video's proper nouns / product / tech names so they aren't mangled (e.g. "Seedream" not "sea dream", "Cloudflare" not "cloud flare"). Accuracy here is load-bearing: the transcript text drives cut decisions AND `/make-tsx` greps it for phrases to time beats — a garbled term breaks both. From the video's topic/title, list the ~10–40 likely brand names, tools, tech, and jargon, one per line (blank lines and `#` comments ignored). **This is per-video — never hardcode terms in `transcribe.py`.** If you skip the file, transcription still runs (empty fallback), just with more errors on specialty words. The shape is one term per line:
 
    ```
@@ -33,7 +34,7 @@ Let `P` = the project (e.g. `video-1`). Clip **id** = a short handle (`0233`); e
    `python tools/analyze_cut.py P [--style tight]` → `qa-report.md` (internal dead-air, clipped-tail risks, tiny fragments, fluff, hard entries at cut joins, **ghost speech** = untranscribed energy riding inside a keep, low-confidence kept tokens). Ghost/hard-entry checks exist because a transcript diff CANNOT see a mistimed token (clipped word onset) or an untranscribed false start ("and it—") that survives the cut — only energy-vs-token cross-checks catch them (a careful listen caught both before these checks existed).
    `python tools/make_review.py P` → `review.md` (per-clip keep/cut table + estimated length per style).
 7. **Editor proxy** (once): `python tools/make_proxy.py P` → `P/work/editor/{proxy.mp4, waveform.png, manifest.json}` (720p concat of raw clips + per-clip offsets).
-8. **Previews** (render BOTH, user picks): `python tools/render_cuts.py P --style tight --mode preview` and `--style natural` → `P/output/preview-<style>.mp4` (720p h264_nvenc).
+8. **Previews** (render BOTH, user picks): `python tools/render_cuts.py P --style tight --mode preview` and `--style natural` → `P/output/preview-<style>.mp4` (720p H.264).
 8.5. **Machine verification of the render (MANDATORY after every preview render, before
    showing the user).** Extract the preview's WAV → `transcribe.py P --clips preview
    --force` → `python tools/verify_cut.py P` → `verify-report.md`. A second ASR pass
@@ -46,22 +47,21 @@ Let `P` = the project (e.g. `video-1`). Clip **id** = a short handle (`0233`); e
    both, now these tools do. Treat every finding as "listen here": explain each one or
    fix it — don't declare the cut good while the report has unexplained lines.
 9. **USER AUDIT** — this is a hard gate, same as the plan step. Open the editor: `python tools/editor/server.py P` → http://localhost:8765. User drags keep/cut edges, adds cuts (I/O + C), compares raw vs edited playback; Save rewrites cuts.json (backup to `work/analysis/backups/`, appended to `changes.log`); Render button re-runs a preview. Iterate until approved.
-10. **Final master**: `python tools/render_cuts.py P --style <chosen> --mode final` → `P/output/master-<style>.mp4` (4K60 10-bit hevc_nvenc). Two MANDATORY post-render steps:
+10. **Final master**: `python tools/render_cuts.py P --style <chosen> --mode final` → `P/output/master-<style>.mp4` (source resolution, 8-bit H.264 — plays everywhere and is the file downstream steps use; no hand-off transcode needed). One MANDATORY post-render step:
    - **A/V duration gate:** `ffprobe -show_entries stream=duration` on v:0 vs a:0 — they MUST be equal. verify_cut's A/V budget GROWS along the timeline (±2s by mid-video) and masks a real accumulating drift; the equal-duration check is the definitive one. (See the drift note under Notes.)
-   - **Playable/handoff transcode:** the 10-bit HEVC master won't play in most players or the IDE preview, and the HEVC final stamps frames ~0.1% fast on 59.94fps footage. Produce an 8-bit H.264 that fixes both by re-timing to true CFR: `ffmpeg -r <src_fps> -i master-<style>.mp4 -c:v libx264 -crf 19 -pix_fmt yuv420p -c:a aac master-<style>-h264.mp4` — the source fps BEFORE `-i` re-stamps every frame (no frame loss) so v:0==a:0. This is the file the user reviews AND the comp-native source downstream steps use.
 11. **Handoff spine — `edited-transcript.json`**: word times in the FINAL master timeline. Simplest robust path (what video-1 used): extract the master's WAV and `transcribe.py` it, then normalize to `{words:[{text,start,end}...]}` in ms. (A cuts.json time-remapper is the planned alternative.) This file is what `/make-tsx` reads to sync visuals to speech.
 
-Do steps 1–4 and 7 once; loop 5→6→8→9 until the cut is approved; then 10–11.
+Do steps 0–4 and 7 once; loop 5→6→8→9 until the cut is approved; then 10–11.
 
 ## cuts.json schema (what you author)
 
 ```jsonc
 {
   "project": "video-1",
-  "clip_order": ["0232", "0233", "0234", "0235"],   // concat order (assume filename order)
+  "clip_order": ["rec1", "rec2"],                   // concat order (assume filename order)
   "clips": [{
-    "id": "0233",
-    "file": "DJI_20260707121304_0233_D.MP4",         // raw MP4, relative to the project dir
+    "id": "rec1",
+    "file": "recording-30fps.mp4",                   // the step-0 file, relative to the project dir
     "duration": 245.3,
     "keeps": [ { "s": 7.32, "e": 13.13, "text": "...", "gap": {"d":0.89,"t":"silence"} } ],
     "cuts":  [ { "s": 2.18, "e": 5.04, "cat": "retake", "text": "...", "note": "why" } ],
@@ -69,7 +69,7 @@ Do steps 1–4 and 7 once; loop 5→6→8→9 until the cut is approved; then 10
                             "note": "...", "status": "suggested" } ]   // or "auto_applied"
   }],
   "styles": { "tight": {…}, "natural": {…} },         // timing knobs, below
-  "flags":  [ { "id": 1, "clip": "0233", "at": "00:30", "issue": "...", "default": "keep both" } ]
+  "flags":  [ { "id": 1, "clip": "rec1", "at": "00:30", "issue": "...", "default": "keep both" } ]
 }
 ```
 
@@ -141,9 +141,9 @@ onset, not a real inflation.
 
 - The cut engine (`tools/cutlib.py`) does word-aware segmentation, per-clip 10th-percentile noise floor, and snap-to-audio tails so word releases aren't clipped — you don't hand-tune tail padding, you tune the style knobs.
 - **`plan_clip` takes the clip's `cuts` and will not let a segment extend into one.** Pass them. `snap_tail` walks forward until the audio decays, so when the material after an atom is cut SPEECH rather than silence it walks straight through and the cut words ride into the render (measured: 0.70s of a cut `"for quick demo—"` survived). This only bites on *intra-phrase* splices — the kind the user asks for during audit — because between original takes there is always silence. Corollary: with the clamp active, a cut boundary placed inside speech now hard-clips instead of silently over-including, so **place cut ends in the quiet between words** and re-check hard entries after every audit round.
-- `render_cuts.py` re-encodes (stream copy is only keyframe-accurate); previews are 720p, final is 4K60 10-bit. It cuts segments VIDEO-ONLY and builds the audio separately as one sample-exact stream matched to each segment's actual frame count (lesson learned: per-segment AAC + `concat -c copy` accumulates ~15-20ms of lip-sync drift PER CUT ≈ 1s over 34 segments). `verify_cut.py --style <s>` checks A/V drift automatically — run it on every render.
-- **A/V drift, part 2 — the audio fix was not enough.** Even with sample-exact audio, the VIDEO side drifts on 59.94fps footage: an mp4 segment's container tacks ~one extra frame (~16ms) of padding onto its last sample when `-t` cuts mid-frame, and `concat -c copy` of mp4s ACCUMULATES it (~0.8s over ~98 cuts) while the audio has none. FIXED in render_cuts.py: the video segments are concatenated through an **MPEG-TS intermediate** (no per-file trailing gap → frame-exact, non-accumulating). A **residual** remains — the HEVC final stamps PTS ~0.1% fast (~0.3s short; `r_frame_rate` stays right but the PTS span runs short), an hevc/TS quirk a stream copy can't fix — corrected at delivery by the re-timing H.264 transcode in step 10. **The trap:** verify_cut's growing A/V budget hides both; ALWAYS gate on `v:0 duration == a:0 duration`.
-- Footage handed to Remotion (`media/projects/footage/ch-N.mp4`) must be transcoded comp-native (1080×1920@30, 8-bit H.264, `-c:a copy`): 10-bit 4K60 HEVC starves OffthreadVideo's decoder during render → duplicated frames → visible stutter + perceived desync.
+- `render_cuts.py` re-encodes (stream copy is only keyframe-accurate); previews are 720p, final is source-resolution H.264. **Encoder:** `tools/encoders.py` uses NVIDIA's encoder when it works and the CPU (libx264) otherwise, so it runs on any PC — CPU is just slower (a 20-min final can take a while; say so before starting). `VIDEO_ENCODER=cpu|nvidia` in `.env` forces one. It cuts segments VIDEO-ONLY and builds the audio separately as one sample-exact stream matched to each segment's actual frame count (lesson learned: per-segment AAC + `concat -c copy` accumulates ~15-20ms of lip-sync drift PER CUT ≈ 1s over 34 segments). `verify_cut.py --style <s>` checks A/V drift automatically — run it on every render.
+- **A/V drift, part 2 — the audio fix was not enough.** Even with sample-exact audio, the VIDEO side drifts on 59.94fps footage: an mp4 segment's container tacks ~one extra frame (~16ms) of padding onto its last sample when `-t` cuts mid-frame, and `concat -c copy` of mp4s ACCUMULATES it (~0.8s over ~98 cuts) while the audio has none. FIXED in render_cuts.py: the video segments are concatenated through an **MPEG-TS intermediate** (no per-file trailing gap → frame-exact, non-accumulating). (The old 10-bit HEVC final also stamped PTS ~0.1% fast; the H.264 final doesn't.) **The trap:** verify_cut's growing A/V budget hides both; ALWAYS gate on `v:0 duration == a:0 duration`.
+- Footage handed to Remotion (`media/projects/footage/ch-N.mp4`) must be comp-native: constant frame rate matching the composition (30 fps per brand.md §7) and 8-bit H.264 — the step-0 prep + H.264 final already give you this for 30 fps sources. A 60 fps camera master still needs `-vf fps=30` before Remotion; 10-bit or VFR footage starves OffthreadVideo's decoder → duplicated frames → visible stutter + perceived desync.
 - **Always verify before handing off:** skim `review.md` / `qa-report.md`, and watch (or at least scrub) a preview — don't declare a cut good from the numbers alone.
 
 Handoff: an approved master + `edited-transcript.json` → **`/make-tsx`** (build the visual beats) and the rest of steps 2–5.

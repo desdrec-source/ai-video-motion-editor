@@ -65,7 +65,7 @@ Page fields: `img, url, tabTitle, enterAt` (required); `transition?: 'cut'|'cros
 - **Zero-height containing block.** `WebBrowserFrame` wraps children in a `transform`ed div, which becomes the containing block for absolute descendants and collapses to 0 height. Page layers therefore need **explicit region dims** (`width/height` from the box), not `inset:0` — the lib already does this; keep it if you extend it.
 - **Navigation vs filter is the realism tell.** A page change = **hard cut + different URL path**. An in-page search/filter = **short crossfade + same path (query appended)**. Mixing these up reads as fake.
 - **Single-viewport screenshots can't scroll** — fake "aliveness" with `drift` + a ken-burns `zoom` instead. Only use a real `scroll` when you have a tall capture.
-- **Render `--scale=1` for the preview** (1080p, correct for `bake.py`); re-render `--scale=2` for the 4K60 final.
+- **Render `--scale=1` for the preview** (1080p, correct for `bake.py`); the final also renders at `--scale=1` for a 1080p master (`brand.md` §7); `--scale=2` only for a 4K master.
 - Cursor hotspot (the tip) is near the pointer SVG's top-left; the lib nudges for it. If a pointer looks a few px off, adjust the target fraction, not the SVG.
 
 ## Step 4 — verify, then hand back to make-tsx

@@ -117,9 +117,10 @@ Translated to video (Remotion, **30fps**):
   `compositionConfig`); landscape shots are not auto-converted. Reels safe area: keep text out of the
   **top 250px** and **bottom 420px** (Reels UI + caption), and ≥ 60px from the sides.
 - **Constant frame rate is mandatory.** Screen recorders (e.g. Panda) write **variable** frame rate
-  (measured: ~29.2 fps average, frame gaps 28–139ms). Before any cut, convert the raw recording to a
-  constant 30 fps master so graphics stay in sync with the voice:
-  `ffmpeg -i raw.mp4 -vf fps=30 -fps_mode cfr -c:v libx264 -crf 18 -preset medium -pix_fmt yuv420p -c:a aac -b:a 192k master_30fps.mp4`
+  (measured: ~29.2 fps average, frame gaps 28–139ms). Before any cut, the raw recording is converted to a
+  constant 30 fps master so graphics stay in sync with the voice. `/clean-cut` does this as its
+  step 0 with `python tools/prep_recording.py videos/<project>` (VFR files only; originals kept in
+  `videos/<project>/original/`).
   A mismatch doesn't error — it just drifts every shot off the narration.
 - **Safe margins (landscape):** keep text ≥ 5% from edges (title-safe ~7.5%). Lower-thirds in the
   bottom ~12–18% band, left-aligned to the margin.

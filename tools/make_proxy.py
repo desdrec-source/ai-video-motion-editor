@@ -11,12 +11,13 @@ import sys
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
+from encoders import hwaccel_args, video_args
+
 
 def encode_part(src: Path, out: Path) -> None:
     subprocess.run(
-        ["ffmpeg", "-y", "-loglevel", "error", "-hwaccel", "cuda", "-i", str(src),
-         "-map", "0:0", "-map", "0:1", "-vf", "scale=1280:-2,format=yuv420p",
-         "-c:v", "h264_nvenc", "-preset", "p4", "-rc", "vbr", "-cq", "29", "-b:v", "0",
+        ["ffmpeg", "-y", "-loglevel", "error", *hwaccel_args(), "-i", str(src),
+         "-map", "0:v:0", "-map", "0:a:0", *video_args("proxy"),
          "-c:a", "aac", "-b:a", "160k", str(out)],
         check=True,
     )

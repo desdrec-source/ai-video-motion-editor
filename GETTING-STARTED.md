@@ -283,15 +283,10 @@ AI Video Motion's, not yours.
    Keep the first one short (1–2 minutes).
 2. **Make a folder for it** inside `videos`, for example `videos\video-1`, and put the recording in
    it. That's all: the skills create every other folder they need.
-3. **Screen recordings: fix the frame rate first.** Most screen recorders (Panda, OBS, Loom and
-   others) save a *variable* frame rate, which makes graphics drift away from your voice. Convert
-   it to a steady 30 frames per second. Replace `recording.mp4` with your file's name:
-
-   ```powershell
-   ffmpeg -i videos\video-1\recording.mp4 -vf fps=30 -fps_mode cfr -c:v libx264 -crf 18 -preset medium -pix_fmt yuv420p -c:a aac -b:a 192k videos\video-1\recording-30fps.mp4
-   ```
-
-   Then keep only the `-30fps` file in the folder, and move the original somewhere safe.
+3. **Screen recordings are handled for you.** Most screen recorders (Panda, OBS, Loom and others)
+   save a *variable* frame rate, which would make graphics drift away from your voice. The cut step
+   checks for this first and, if needed, makes a steady 30 fps copy called `…-30fps.mp4`. Your
+   original is moved to an `original` folder inside `videos\video-1`, never deleted.
 4. **Walk the pipeline**, one plain sentence at a time. Each step hands its work to the next, and
    you approve as you go:
 
@@ -375,7 +370,7 @@ One: a free AssemblyAI key. That runs the cut, which is the heart of it. Add the
 want voice clean-up, sound effects or thumbnails.
 
 **Can I use my screen recordings?**
-Yes. Just convert them to a steady 30 fps first (Step 8). The toolkit also builds graphics like
+Yes. The cut step fixes their frame rate automatically (Step 8). The toolkit also builds graphics like
 diagrams, title cards and mock app screens for you, so you don't have to film those.
 
 **Does this work on a Mac?**
@@ -398,7 +393,7 @@ See [Troubleshooting](#troubleshooting) just below.
 | **`CERTIFICATE_VERIFY_FAILED`** or **SSL** errors | Your antivirus scans secure web traffic | See [Certificate errors](#certificate-errors-antivirus) |
 | **`ModuleNotFoundError`** (`requests`, `PIL`, `google`…) | A tool ran with the wrong Python | Run tools as `venv\Scripts\python tools\...`, from the toolkit folder |
 | **`… not found in .env`** | A key is missing | Open `.env` (Step 6) and add it |
-| Graphics **drift out of sync** with your voice | Variable frame rate recording | Convert to 30 fps first (Step 8) |
+| Graphics **drift out of sync** with your voice | Variable frame rate recording | Ask Claude Code: "run prep_recording on videos/video-1", then redo the cut |
 | **`npm warn allow-scripts`** about **esbuild** | A safety warning from npm | Harmless, ignore it |
 | Anything else | | Copy the error, paste it into Claude Code, and ask "what does this mean and how do I fix it?" |
 

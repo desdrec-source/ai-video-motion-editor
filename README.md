@@ -46,8 +46,10 @@ claude                                                   # open in Claude Code, 
 > **set up my brand** · **clean cut videos/video-1** · **add graphics to video-1** ·
 > **suggest sfx for video-1** · **package this video**
 
-**Screen recordings:** most screen recorders save a *variable* frame rate. Convert to a steady 30 fps
-before cutting, or the graphics slowly drift away from your voice (see `brand.md` §7).
+**Screen recordings welcome:** most screen recorders save a *variable* frame rate, which makes graphics
+drift away from your voice. `/clean-cut` fixes this automatically before cutting (`tools/prep_recording.py`).
+
+**Any PC:** the video tools use an NVIDIA graphics card when there is one, and your CPU otherwise.
 
 ## See it before you record anything
 

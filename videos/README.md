@@ -7,7 +7,7 @@ need to make it by hand. Drop your raw recording in and ask Claude Code to cut i
 
 ```
 videos/video-1/
-├─ DJI_0233.MP4                  your raw talking-head footage (git-ignored)
+├─ recording.mp4                 your raw recording, screen or camera (git-ignored)
 ├─ script/                       optional — your script/plan, if you write one
 ├─ work/
 │  ├─ keyterms.txt               brand/tech names, so the transcript spells them right
